@@ -1,0 +1,308 @@
+/* --- VARIÁVEIS E CONFIGURAÇÃO GLOBAL --- */
+:root {
+  --bg-dark: #0f172a;
+  --card-bg: #1e293b;
+  --purple: #a855f7;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --text-gray: #cbd5e1;
+  --text-light: #f8fafc;
+}
+
+body { 
+  background-color: var(--bg-dark); 
+  color: white; 
+  font-family: 'Inter', sans-serif; 
+  margin: 0;
+  padding: 0;
+  /* Espaço extra no final para o widget não tapar o conteúdo ao rolar */
+  padding-bottom: 120px; 
+}
+
+.container { 
+  max-width: 800px; 
+  margin: 40px auto; 
+  padding: 20px; 
+}
+
+.title { 
+  text-align: center; 
+  color: var(--purple); 
+  font-size: 2.5rem; 
+  font-weight: 800; 
+  margin-bottom: 30px; 
+  letter-spacing: 2px; 
+  text-transform: uppercase;
+}
+
+/* --- ABAS (NAVEGAÇÃO) --- */
+.tabs { 
+  display: flex; 
+  justify-content: center; 
+  gap: 12px; 
+  margin-bottom: 30px; 
+}
+
+.tab-btn { 
+  background: #334155; 
+  border: none; 
+  color: var(--text-gray); 
+  padding: 12px 24px; 
+  border-radius: 10px; 
+  cursor: pointer; 
+  font-weight: 600; 
+  transition: all 0.3s ease; 
+}
+
+.tab-btn.active { 
+  background: var(--purple); 
+  color: white; 
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); 
+  transform: translateY(-2px);
+}
+
+/* --- INPUTS E GRUPOS DE CRIAÇÃO --- */
+.input-group { 
+  display: flex; 
+  gap: 10px; 
+  margin-bottom: 20px; 
+}
+
+.input-main { 
+  flex: 1; 
+  background: var(--card-bg); 
+  border: 1px solid #334155; 
+  border-radius: 8px; 
+  padding: 12px; 
+  color: white; 
+  outline: none; 
+  transition: border-color 0.3s;
+}
+
+.input-main:focus { 
+  border-color: var(--purple); 
+}
+
+.btn-create { 
+  background: var(--purple); 
+  border: none; 
+  padding: 0 20px; 
+  border-radius: 8px; 
+  color: white; 
+  font-weight: bold; 
+  cursor: pointer; 
+  transition: 0.2s; 
+}
+
+.btn-create:hover { 
+  filter: brightness(1.2); 
+}
+
+.btn-save {
+  background: var(--green);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-save:hover {
+  filter: brightness(1.1);
+}
+
+/* --- CARDS (MATÉRIAS E FLASHCARDS) --- */
+.materia-card { 
+  background: var(--card-bg); 
+  border-radius: 12px; 
+  margin-bottom: 20px; 
+  border-left: 5px solid var(--purple); 
+  overflow: hidden; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+}
+
+.materia-header { 
+  transition: background 0.2s; 
+}
+
+.materia-header:hover { 
+  background: rgba(255,255,255,0.05); 
+}
+
+.tema-item { 
+  background: #334155; 
+  border-radius: 10px; 
+  padding: 15px; 
+  margin-top: 10px; 
+  position: relative; 
+}
+
+.textarea-notas { 
+  width: 100%; 
+  background: #0f172a; 
+  border: 1px solid #475569; 
+  border-radius: 8px; 
+  padding: 10px; 
+  color: white; 
+  margin: 10px 0; 
+  min-height: 80px; 
+  resize: vertical; 
+  box-sizing: border-box; 
+}
+
+/* --- TIMER WIDGET (FLUTUANTE NO CANTO) --- */
+.timer-widget {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #1e293b;
+  border: 2px solid var(--purple);
+  padding: 15px 25px;
+  border-radius: 25px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+  z-index: 10000;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.timer-rodando { 
+  border-color: var(--green); 
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); 
+}
+
+.timer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-label { 
+  font-size: 0.65rem; 
+  color: var(--text-gray); 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom: -5px;
+}
+
+.timer-clock { 
+  font-family: 'Monaco', 'Courier New', monospace; 
+  font-size: 1.8rem; 
+  font-weight: bold; 
+  color: var(--text-light); 
+  min-width: 130px;
+}
+
+.timer-btns { 
+  display: flex; 
+  gap: 8px; 
+  border-left: 1px solid #475569;
+  padding-left: 15px;
+}
+
+.btn-icon { 
+  background: rgba(255, 255, 255, 0.05); 
+  border: none; 
+  cursor: pointer; 
+  font-size: 1.3rem; 
+  padding: 8px; 
+  border-radius: 12px; 
+  transition: all 0.2s; 
+}
+
+.btn-icon:hover { 
+  background: rgba(255, 255, 255, 0.15); 
+  transform: scale(1.1); 
+}
+
+/* --- FLASHCARDS E EXTRAS --- */
+.btn-delete-small { 
+  background: var(--red); 
+  color: white; 
+  border: none; 
+  padding: 6px 12px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  font-size: 0.8rem; 
+  margin-right: 15px;
+}
+
+.btn-delete-icon { 
+  position: absolute; 
+  right: 15px; 
+  top: 15px; 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  font-size: 1.2rem; 
+  opacity: 0.6;
+  transition: 0.2s;
+}
+
+.btn-delete-icon:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.resposta-box { 
+  background: #0f172a; 
+  padding: 15px; 
+  border-radius: 8px; 
+  margin-top: 10px; 
+  border-left: 4px solid var(--blue); 
+  color: #e2e8f0; 
+}
+
+/* --- RELATÓRIO / SESSÕES --- */
+.sessao-lista {
+  margin-top: 15px;
+}
+
+.sessao-item { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 15px; 
+  border-bottom: 1px solid #334155; 
+}
+
+.sessao-item:last-child {
+  border-bottom: none;
+}
+
+.sessao-tempo { 
+  color: var(--purple); 
+  font-weight: bold; 
+}
+
+/* --- RESPONSIVIDADE (CELULAR) --- */
+@media (max-width: 600px) {
+  .timer-widget { 
+    bottom: 20px; 
+    right: 10px; 
+    left: 10px; 
+    justify-content: space-between; 
+    padding: 10px 15px;
+  }
+  
+  .timer-clock { 
+    font-size: 1.4rem; 
+    min-width: auto; 
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+  
+  .tab-btn {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+  }
+
+  .container { 
+    padding: 10px; 
+    margin-top: 20px;
+  }
+}
