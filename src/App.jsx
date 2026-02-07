@@ -12,11 +12,8 @@ export default function App() {
   const [flashcards, setFlashcards] = useState([]);
   const [sessoes, setSessoes] = useState([]);
   const [expandidas, setExpandidas] = useState({});
-
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
-
-  // --- AJUSTE ESSENCIAL 1: ESTADOS DE USUÁRIO ---
   const [usuario, setUsuario] = useState(null);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -24,17 +21,14 @@ export default function App() {
 
   const timerRef = useRef(null);
 
-  // --- AJUSTE ESSENCIAL 2: MONITOR DE LOGIN ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUsuario(session?.user ?? null);
       setCarregando(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUsuario(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -53,7 +47,6 @@ export default function App() {
     return () => clearInterval(timerRef.current);
   }, [rodando]);
 
-  // --- AJUSTE ESSENCIAL 3: FUNÇÕES DE LOGIN/CADASTRO ---
   async function lidarAuth(tipo) {
     if (!email || !senha) return alert("Preencha email e senha!");
     const { error } = tipo === 'login' 
@@ -72,7 +65,6 @@ export default function App() {
       const { data: mats } = await supabase.from("materias").select("*, temas(*, anexos(*))");
       const { data: sess } = await supabase.from("sessoes_estudo").select("*").order("data_estudo", { ascending: false });
       const { data: flash } = await supabase.from("flashcards").select("*").order("criado_em", { ascending: false });
-
       setMaterias(mats || []);
       setSessoes(sess || []);
       setFlashcards(flash || []);
@@ -84,27 +76,20 @@ export default function App() {
   async function anexarArquivo(temaId, file) {
     if (!file) return;
     const nomeLimpo = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.\-]/g, "_");
-    // Agora salvamos numa pasta com o ID do usuário para organização total
     const nomeNoStorage = `${usuario.id}/${temaId}/${Date.now()}-${nomeLimpo}`;
-
     try {
       const { error: uploadError } = await supabase.storage.from("anexos").upload(nomeNoStorage, file, {
         contentType: file.type,
         upsert: true
       });
-
       if (uploadError) throw uploadError;
-
       const { data } = supabase.storage.from("anexos").getPublicUrl(nomeNoStorage);
-
-      // Adicionamos user_id no insert
       await supabase.from("anexos").insert([{
         tema_id: temaId,
         nome_arquivo: file.name,
         url: data.publicUrl,
         user_id: usuario.id
       }]);
-
       carregarTudo();
     } catch (err) {
       alert("Erro no upload: " + err.message);
@@ -131,7 +116,6 @@ export default function App() {
 
   async function criarMateria() {
     if (!novaMat) return;
-    // Adicionamos user_id
     const { error } = await supabase.from("materias").insert([{ nome: novaMat, user_id: usuario.id }]);
     if (error) alert("Erro ao salvar matéria: " + error.message);
     setNovaMat("");
@@ -141,7 +125,6 @@ export default function App() {
   async function criarTema(materiaId) {
     const input = document.getElementById(`input-tema-${materiaId}`);
     if (!input?.value) return;
-    // Adicionamos user_id
     await supabase.from("temas").insert([{ materia_id: materiaId, nome: input.value, user_id: usuario.id }]);
     input.value = "";
     carregarTudo();
@@ -150,7 +133,6 @@ export default function App() {
   async function salvarSessao() {
     if (tempo < 1) return;
     setRodando(false);
-    // Adicionamos user_id
     const { error } = await supabase.from("sessoes_estudo").insert([{ segundos_totais: tempo, user_id: usuario.id }]); 
     if (error) alert("Erro ao salvar sessão: " + error.message);
     else { setTempo(0); alert("Sessão de estudo salva com sucesso! 🚀"); carregarTudo(); }
@@ -163,7 +145,7 @@ export default function App() {
         tema: form.tema.value, 
         pergunta: form.pergunta.value, 
         resposta: form.resposta.value,
-        user_id: usuario.id // Adicionamos user_id
+        user_id: usuario.id
     };
     const { error } = await supabase.from("flashcards").insert([novoCard]);
     if (error) alert("Erro ao salvar: " + error.message);
@@ -206,7 +188,6 @@ export default function App() {
 
   if (carregando) return <div className="container" style={{color: 'white', textAlign: 'center', marginTop: '50px'}}>Iniciando StudyFlow...</div>;
 
-  // --- TELA DE LOGIN ---
   if (!usuario) {
     return (
       <div className="container">
@@ -226,10 +207,10 @@ export default function App() {
 
   return (
     <div className="container">
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-        <h1 className="title">STUDYFLOW</h1>
-        <button onClick={() => supabase.auth.signOut()} style={{background: 'none', border: '1px solid #444', color: '#888', borderRadius: '5px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px'}}>Sair</button>
-      </div>
+      <header style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '30px', width: '100%' }}>
+        <h1 className="title" style={{ margin: 0 }}>STUDYFLOW</h1>
+        <button onClick={() => supabase.auth.signOut()} style={{ position: 'absolute', right: 0, background: 'none', border: '1px solid #444', color: '#888', borderRadius: '5px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px'}}>Sair</button>
+      </header>
       
       <div className="tabs">
         {["Matérias", "Flashcards", "Relatório"].map((t) => (
@@ -274,24 +255,16 @@ export default function App() {
                     <div key={t.id} className="tema-item">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
                         <h4 style={{ margin: 0 }}>📍 {t.nome}</h4>
-                        
                         <label className="btn-anexo" style={{ cursor: "pointer", fontSize: "12px", background: "rgba(168, 85, 247, 0.2)", padding: "4px 8px", borderRadius: "4px", border: "1px solid #a855f7" }}>
                           📎 Anexar
                           <input type="file" hidden accept="application/pdf,image/*" onChange={(e) => anexarArquivo(t.id, e.target.files[0])} />
                         </label>
                       </div>
-
                       <textarea className="textarea-notas" placeholder="Suas anotações..." defaultValue={t.notas} onBlur={(e) => supabase.from("temas").update({ notas: e.target.value }).eq("id", t.id)} />
-                      
                       <div className="anexos-list" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
                         {t.anexos?.map(a => (
                           <div key={a.id} className="anexo-tag" style={{ background: "#1e293b", padding: "2px 10px", borderRadius: "12px", fontSize: "11px", display: "flex", alignItems: "center", gap: "5px", border: "1px solid #334155" }}>
-                            <a 
-                              href={`${a.url}?t=${Date.now()}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{ color: "#a855f7", textDecoration: "none" }}
-                            >
+                            <a href={`${a.url}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer" style={{ color: "#a855f7", textDecoration: "none" }}>
                               {a.nome_arquivo.toLowerCase().endsWith('.pdf') ? "📕" : "📄"} {a.nome_arquivo}
                             </a>
                             <button onClick={() => deletarAnexo(a.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: "bold" }}>×</button>
@@ -329,8 +302,8 @@ export default function App() {
                 <summary style={{ cursor: "pointer", fontWeight: "bold", padding: "15px" }}>📂 {tema}</summary>
                 <div style={{ padding: "10px" }}>
                   {flashcards.filter(f => f.tema === tema && (f.pergunta.toLowerCase().includes(buscaFlash.toLowerCase()))).map((f) => (
-                    <div key={f.id} className="tema-item">
-                      <button onClick={() => deletarFlashcard(f.id)} className="btn-delete-icon">🗑️</button>
+                    <div key={f.id} className="tema-item" style={{position: 'relative'}}>
+                      <button onClick={() => deletarFlashcard(f.id)} className="btn-delete-icon" style={{position: 'absolute', right: '15px', top: '15px', background: 'none', border: 'none', cursor: 'pointer'}}>🗑️</button>
                       <p><strong>Q:</strong> {f.pergunta}</p>
                       <details><summary style={{ cursor: "pointer", color: "#3b82f6" }}>Ver Resposta</summary><p className="resposta-box">{f.resposta}</p></details>
                     </div>
@@ -360,7 +333,6 @@ export default function App() {
             <div style={{ textAlign: "center", marginBottom: "25px", background: "rgba(34, 197, 94, 0.15)", border: "2px solid #22c55e", padding: "20px", borderRadius: "12px" }}>
               <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: "bold", letterSpacing: "1px" }}>TOTAL NO PERÍODO</span>
               <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginTop: "5px" }}>{formatar(totalSegundosFiltrados)}</div>
-              {!filtroDatasAtivo && <div style={{ color: "#aaa", fontSize: "11px", marginTop: "5px", opacity: 0.7 }}>Preencha as datas acima para calcular o total</div>}
             </div>
             <div className="sessao-lista">
               {sessoesFiltradas.map((s) => (
@@ -369,7 +341,6 @@ export default function App() {
                   <span style={{ fontWeight: "bold", color: "#22c55e" }}>⏱️ {formatar(s.segundos_totais || 0)}</span>
                 </div>
               ))}
-              {sessoesFiltradas.length === 0 && <p style={{opacity: 0.5, textAlign: 'center', marginTop: "20px"}}>Nenhuma sessão encontrada.</p>}
             </div>
             {sessoes.length > 0 && <button onClick={zerarHistorico} style={{ marginTop: "30px", width: "100%", padding: "10px", background: "rgba(239, 68, 68, 0.1)", border: "1px dashed #ef4444", color: "#ef4444", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>⚠️ Limpar Histórico de Sessões</button>}
           </div>
