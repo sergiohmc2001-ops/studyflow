@@ -12,12 +12,13 @@ export default function App() {
   const [flashcards, setFlashcards] = useState([]);
   const [sessoes, setSessoes] = useState([]);
   const [expandidas, setExpandidas] = useState({});
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  const [notasAbertas, setNotasAbertas] = useState({});
+  const [editandoNota, setEditandoNota] = useState(null);
+  const [textoNota, setTextoNota] = useState(""); 
+  const [carregando, setCarregando] = useState(true);
   const [usuario, setUsuario] = useState(null);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [carregando, setCarregando] = useState(true);
 
   const timerRef = useRef(null);
 
@@ -47,19 +48,6 @@ export default function App() {
     return () => clearInterval(timerRef.current);
   }, [rodando]);
 
-  async function lidarAuth(tipo) {
-    if (!email || !senha) return alert("Preencha email e senha!");
-    const { error } = tipo === 'login' 
-      ? await supabase.auth.signInWithPassword({ email, password: senha })
-      : await supabase.auth.signUp({ email, password: senha });
-    if (error) alert(error.message);
-    else if (tipo === 'cadastro') alert("Conta criada! Verifique seu e-mail.");
-  }
-
-  const alternarMateria = (id) => {
-    setExpandidas(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
   async function carregarTudo() {
     try {
       const { data: mats } = await supabase.from("materias").select("*, temas(*, anexos(*))");
@@ -73,69 +61,49 @@ export default function App() {
     }
   }
 
-  async function anexarArquivo(temaId, file) {
-    if (!file) return;
-    const nomeLimpo = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.\-]/g, "_");
-    const nomeNoStorage = `${usuario.id}/${temaId}/${Date.now()}-${nomeLimpo}`;
-    try {
-      const { error: uploadError } = await supabase.storage.from("anexos").upload(nomeNoStorage, file, {
-        contentType: file.type,
-        upsert: true
-      });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("anexos").getPublicUrl(nomeNoStorage);
-      await supabase.from("anexos").insert([{
-        tema_id: temaId,
-        nome_arquivo: file.name,
-        url: data.publicUrl,
-        user_id: usuario.id
-      }]);
-      carregarTudo();
-    } catch (err) {
-      alert("Erro no upload: " + err.message);
-    }
-  }
-
-  async function deletarAnexo(id) {
-    if (!confirm("Excluir este arquivo?")) return;
-    await supabase.from("anexos").delete().eq("id", id);
-    carregarTudo();
-  }
-
-  async function zerarHistorico() {
-    const confirmacao = confirm("Deseja realmente apagar TODO o histórico de sessões de estudo?");
-    if (confirmacao) {
-      const senhaConfirm = prompt("Para confirmar a exclusão permanente, digite DELETAR:");
-      if (senhaConfirm === "DELETAR") {
-        const { error } = await supabase.from("sessoes_estudo").delete().eq("user_id", usuario.id);
-        if (error) alert("Erro: " + error.message);
-        else { alert("Histórico removido! 🧹"); carregarTudo(); }
-      }
-    }
+  async function lidarAuth(tipo) {
+    if (!email || !senha) return alert("Preencha email e senha!");
+    const { error } = tipo === 'login' 
+      ? await supabase.auth.signInWithPassword({ email, password: senha })
+      : await supabase.auth.signUp({ email, password: senha });
+    if (error) alert(error.message);
   }
 
   async function criarMateria() {
     if (!novaMat) return;
-    const { error } = await supabase.from("materias").insert([{ nome: novaMat, user_id: usuario.id }]);
-    if (error) alert("Erro ao salvar matéria: " + error.message);
+    await supabase.from("materias").insert([{ nome: novaMat, user_id: usuario.id }]);
     setNovaMat("");
+    carregarTudo();
+  }
+
+  async function deletarMateria(e, id) {
+    e.stopPropagation();
+    if (!confirm("Excluir matéria e tudo dentro dela?")) return;
+    await supabase.from("materias").delete().eq("id", id);
     carregarTudo();
   }
 
   async function criarTema(materiaId) {
     const input = document.getElementById(`input-tema-${materiaId}`);
     if (!input?.value) return;
-    await supabase.from("temas").insert([{ materia_id: materiaId, nome: input.value, user_id: usuario.id }]);
+    await supabase.from("temas").insert([{ materia_id: materiaId, nome: input.value, user_id: usuario.id, status: 'critico' }]);
     input.value = "";
     carregarTudo();
   }
 
-  async function salvarSessao() {
-    if (tempo < 1) return;
-    setRodando(false);
-    const { error } = await supabase.from("sessoes_estudo").insert([{ segundos_totais: tempo, user_id: usuario.id }]); 
-    if (error) alert("Erro ao salvar sessão: " + error.message);
-    else { setTempo(0); alert("Sessão de estudo salva com sucesso! 🚀"); carregarTudo(); }
+  async function alternarStatus(temaId, statusAtual) {
+    const ordens = ['critico', 'leitura', 'revisado'];
+    const proximo = ordens[(ordens.indexOf(statusAtual || 'critico') + 1) % ordens.length];
+    await supabase.from("temas").update({ status: proximo }).eq("id", temaId);
+    carregarTudo();
+  }
+
+  async function salvarNota(temaId) {
+    const { error } = await supabase.from("temas").update({ notas: textoNota }).eq("id", temaId);
+    if (!error) {
+      setEditandoNota(null);
+      carregarTudo();
+    }
   }
 
   async function criarFlashcard(e) {
@@ -148,8 +116,7 @@ export default function App() {
         user_id: usuario.id
     };
     const { error } = await supabase.from("flashcards").insert([novoCard]);
-    if (error) alert("Erro ao salvar: " + error.message);
-    else { form.reset(); carregarTudo(); alert("Flashcard adicionado!"); }
+    if (!error) { form.reset(); carregarTudo(); }
   }
 
   async function deletarFlashcard(id) {
@@ -158,10 +125,18 @@ export default function App() {
     carregarTudo();
   }
 
-  async function deletarMateria(e, id) {
-    e.stopPropagation();
-    if (!confirm("Excluir matéria e tudo dentro dela?")) return;
-    await supabase.from("materias").delete().eq("id", id);
+  async function deletarPastaFlashcard(temaNome) {
+    if (!confirm(`Deseja excluir a pasta "${temaNome}" e TODOS os seus cards permanentemente?`)) return;
+    await supabase.from("flashcards").delete().eq("tema", temaNome).eq("user_id", usuario.id);
+    carregarTudo();
+  }
+
+  async function revisarFlashcard(id, nivel) {
+    let dias = nivel === 'facil' ? 4 : nivel === 'medio' ? 2 : 0;
+    const hoje = new Date();
+    hoje.setDate(hoje.getDate() + dias);
+    const dataFormatada = hoje.toISOString().split('T')[0];
+    await supabase.from("flashcards").update({ proxima_revisao: dataFormatada }).eq("id", id);
     carregarTudo();
   }
 
@@ -172,28 +147,52 @@ export default function App() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${seg.toString().padStart(2, '0')}`;
   };
 
-  const sessoesFiltradas = sessoes.filter(s => {
-    if (!dataInicio && !dataFim) return true;
-    const dataSessao = s.data_estudo ? s.data_estudo.split('T')[0] : "";
-    if (dataInicio && dataFim) return dataSessao >= dataInicio && dataSessao <= dataFim;
-    if (dataInicio) return dataSessao >= dataInicio;
-    if (dataFim) return dataSessao <= dataFim;
-    return true;
-  });
+  async function salvarSessao() {
+    if (tempo < 1) return;
+    setRodando(false);
+    await supabase.from("sessoes_estudo").insert([{ segundos_totais: tempo, user_id: usuario.id }]); 
+    setTempo(0); 
+    carregarTudo();
+  }
 
-  const filtroDatasAtivo = dataInicio !== "" && dataFim !== "";
-  const totalSegundosFiltrados = filtroDatasAtivo 
-    ? sessoesFiltradas.reduce((acc, s) => acc + (s.segundos_totais || 0), 0)
-    : 0;
+  async function anexarArquivo(temaId, file) {
+    if (!file) return;
+    try {
+      const nomeNoStorage = `${usuario.id}/${temaId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+      const { error: uploadError } = await supabase.storage.from("anexos").upload(nomeNoStorage, file);
+      if (uploadError) throw uploadError;
 
-  if (carregando) return <div className="container" style={{color: 'white', textAlign: 'center', marginTop: '50px'}}>Iniciando StudyFlow...</div>;
+      const { data } = supabase.storage.from("anexos").getPublicUrl(nomeNoStorage);
+      const { error: dbError } = await supabase.from("anexos").insert([{ 
+        tema_id: temaId, 
+        nome_arquivo: file.name, 
+        url: data.publicUrl, 
+        user_id: usuario.id 
+      }]);
+      
+      if (dbError) throw dbError;
+      carregarTudo();
+    } catch (err) {
+      alert("Erro ao anexar: " + err.message);
+    }
+  }
+
+  // FUNÇÃO DE EXCLUIR ANEXO SEM MEXER NO SCHEMA
+  async function deletarAnexo(e, anexoId) {
+    e.preventDefault();
+    if (!confirm("Excluir este anexo?")) return;
+    await supabase.from("anexos").delete().eq("id", anexoId);
+    carregarTudo();
+  }
+
+  if (carregando) return <div className="container" style={{color: 'white', textAlign: 'center', marginTop: '50px'}}>Carregando StudyFlow...</div>;
 
   if (!usuario) {
     return (
       <div className="container">
         <h1 className="title">STUDYFLOW</h1>
         <div className="materia-card" style={{padding: '30px', maxWidth: '400px', margin: '40px auto'}}>
-          <h2 style={{color: 'white', marginTop: 0, textAlign: 'center'}}>Acessar Conta</h2>
+          <h2 style={{color: 'white', marginTop: 0, textAlign: 'center'}}>Acesso</h2>
           <input className="input-main" style={{width: '90%', marginBottom: '10px'}} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <input className="input-main" style={{width: '90%', marginBottom: '20px'}} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} />
           <div style={{display: 'flex', gap: '10px'}}>
@@ -207,9 +206,9 @@ export default function App() {
 
   return (
     <div className="container">
-      <header style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '30px', width: '100%' }}>
-        <h1 className="title" style={{ margin: 0 }}>STUDYFLOW</h1>
-        <button onClick={() => supabase.auth.signOut()} style={{ position: 'absolute', right: 0, background: 'none', border: '1px solid #444', color: '#888', borderRadius: '5px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px'}}>Sair</button>
+      <header style={{ textAlign: 'center', marginBottom: '30px', position: 'relative' }}>
+        <h1 className="title">STUDYFLOW</h1>
+        <button onClick={() => supabase.auth.signOut()} className="btn-delete-small" style={{position: 'absolute', right: 0, top: '10px'}}>Sair</button>
       </header>
       
       <div className="tabs">
@@ -225,7 +224,7 @@ export default function App() {
         </div>
         <div className="timer-btns">
           <button onClick={() => setRodando(!rodando)} className="btn-icon">{rodando ? "⏸️" : "▶️"}</button>
-          <button onClick={salvarSessao} title="Salvar Sessão" className="btn-icon">💾</button>
+          <button onClick={salvarSessao} title="Salvar" className="btn-icon">💾</button>
           <button onClick={() => {setRodando(false); setTempo(0)}} title="Zerar" className="btn-icon">🔄</button>
         </div>
       </div>
@@ -236,81 +235,164 @@ export default function App() {
             <input className="input-main" placeholder="Nova matéria..." value={novaMat} onChange={(e) => setNovaMat(e.target.value)} />
             <button className="btn-create" onClick={criarMateria}>Criar</button>
           </div>
-          {materias.map((m) => (
-            <div key={m.id} className="materia-card">
-              <div onClick={() => alternarMateria(m.id)} className="materia-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span>{expandidas[m.id] ? "▼" : "▶"}</span>
-                  <h3 style={{ margin: 0 }}>📁 {m.nome}</h3>
-                </div>
-                <button onClick={(e) => deletarMateria(e, m.id)} className="btn-delete-small">Excluir</button>
-              </div>
-              {expandidas[m.id] && (
-                <div className="materia-content" style={{ padding: "15px", borderTop: "1px solid #334155", background: "rgba(0,0,0,0.2)" }}>
-                  <div className="input-group">
-                    <input className="input-main" id={`input-tema-${m.id}`} placeholder="Novo tema..." />
-                    <button className="btn-create" style={{ background: "#22c55e" }} onClick={() => criarTema(m.id)}>+</button>
+          {materias.map((m) => {
+            const totalTemas = m.temas?.length || 0;
+            const pontos = m.temas?.reduce((acc, t) => {
+                if (t.status === 'revisado') return acc + 3; 
+                if (t.status === 'leitura') return acc + 2;   
+                return acc + 1; 
+            }, 0) || 0;
+
+            const progresso = totalTemas > 0 ? Math.round((pontos / (totalTemas * 3)) * 100) : 0;
+            const corBarra = progresso > 70 ? 'var(--green)' : progresso > 35 ? '#eab308' : 'var(--red)';
+
+            return (
+              <div key={m.id} className="materia-card">
+                <div onClick={() => setExpandidas(p => ({...p, [m.id]: !p[m.id]}))} className="materia-header" style={{ padding: "15px", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: 0 }}>{expandidas[m.id] ? "▼" : "▶"} 📁 {m.nome}</h3>
+                    <button onClick={(e) => deletarMateria(e, m.id)} className="btn-delete-small">Excluir</button>
                   </div>
-                  {m.temas?.map((t) => (
-                    <div key={t.id} className="tema-item">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
-                        <h4 style={{ margin: 0 }}>📍 {t.nome}</h4>
-                        <label className="btn-anexo" style={{ cursor: "pointer", fontSize: "12px", background: "rgba(168, 85, 247, 0.2)", padding: "4px 8px", borderRadius: "4px", border: "1px solid #a855f7" }}>
-                          📎 Anexar
-                          <input type="file" hidden accept="application/pdf,image/*" onChange={(e) => anexarArquivo(t.id, e.target.files[0])} />
-                        </label>
-                      </div>
-                      <textarea className="textarea-notas" placeholder="Suas anotações..." defaultValue={t.notas} onBlur={(e) => supabase.from("temas").update({ notas: e.target.value }).eq("id", t.id)} />
-                      <div className="anexos-list" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
-                        {t.anexos?.map(a => (
-                          <div key={a.id} className="anexo-tag" style={{ background: "#1e293b", padding: "2px 10px", borderRadius: "12px", fontSize: "11px", display: "flex", alignItems: "center", gap: "5px", border: "1px solid #334155" }}>
-                            <a href={`${a.url}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer" style={{ color: "#a855f7", textDecoration: "none" }}>
-                              {a.nome_arquivo.toLowerCase().endsWith('.pdf') ? "📕" : "📄"} {a.nome_arquivo}
-                            </a>
-                            <button onClick={() => deletarAnexo(a.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: "bold" }}>×</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ marginTop: '10px', background: '#334155', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ 
+                        width: `${progresso}%`, 
+                        background: corBarra, 
+                        height: '100%', 
+                        transition: '0.6s ease-in-out',
+                        boxShadow: `0 0 10px ${corBarra}55`
+                    }}></div>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+                {expandidas[m.id] && (
+                  <div className="materia-content" style={{ padding: "15px", borderTop: "1px solid #334155" }}>
+                    <div className="input-group">
+                      <input className="input-main" id={`input-tema-${m.id}`} placeholder="Novo tema..." />
+                      <button className="btn-create" style={{ background: "#22c55e" }} onClick={() => criarTema(m.id)}>+</button>
+                    </div>
+                    {m.temas?.map((t) => (
+                      <div key={t.id} className="tema-item" style={{marginBottom: '10px'}}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div onClick={() => alternarStatus(t.id, t.status)} style={{ width: '12px', height: '12px', borderRadius: '50%', cursor: 'pointer', background: t.status === 'revisado' ? 'var(--green)' : t.status === 'leitura' ? '#eab308' : 'var(--red)', boxShadow: '0 0 5px currentColor' }} />
+                            <h4 style={{ margin: 0 }}>{t.nome}</h4>
+                          </div>
+                          <div style={{ display: "flex", gap: "5px" }}>
+                            <button onClick={() => setNotasAbertas(p => ({...p, [t.id]: !p[t.id]}))} className="btn-anexo" style={{color: '#3b82f6', borderColor: '#3b82f6', background: 'transparent', cursor: 'pointer'}}>📝</button>
+                            <label className="btn-anexo" style={{cursor: 'pointer'}}>📎<input type="file" hidden onChange={(e) => anexarArquivo(t.id, e.target.files[0])} /></label>
+                          </div>
+                        </div>
+
+                        {/* LISTA DE ANEXOS COM (X) PARA EXCLUIR */}
+                        {t.anexos && t.anexos.length > 0 && (
+                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '5px', paddingLeft: '22px' }}>
+                            {t.anexos.map(anexo => (
+                              <div key={anexo.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(59,130,246,0.1)', borderRadius: '4px', border: '1px solid #3b82f6', overflow: 'hidden' }}>
+                                <a href={anexo.url} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: '#3b82f6', textDecoration: 'none', padding: '2px 6px' }}>
+                                  📄 {anexo.nome_arquivo}
+                                </a>
+                                <button onClick={(e) => deletarAnexo(e, anexo.id)} style={{ background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', padding: '2px 5px', fontSize: '10px' }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {notasAbertas[t.id] && (
+                          <div style={{marginTop: '10px', background: '#0f172a', padding: '10px', borderRadius: '5px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                              <span style={{fontSize: '10px', color: '#64748b'}}>ANOTAÇÕES</span>
+                              {editandoNota === t.id ? (
+                                <button onClick={() => salvarNota(t.id)} className="btn-save" style={{padding: '2px 10px', fontSize: '10px', background: '#22c55e'}}>Salvar</button>
+                              ) : (
+                                <button onClick={() => { setEditandoNota(t.id); setTextoNota(t.notas || ""); }} className="btn-save" style={{padding: '2px 10px', fontSize: '10px', background: '#3b82f6'}}>Editar</button>
+                              )}
+                            </div>
+                            {editandoNota === t.id ? (
+                              <textarea 
+                                className="textarea-notas" 
+                                value={textoNota} 
+                                onChange={(e) => setTextoNota(e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <div style={{fontSize: '14px', whiteSpace: 'pre-wrap', color: t.notas ? '#e2e8f0' : '#475569', minHeight: '30px', padding: '10px'}}>
+                                {t.notas || "Nenhuma anotação ainda..."}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {aba === "Flashcards" && (
         <div className="section">
           <form className="materia-card" style={{padding: '20px'}} onSubmit={criarFlashcard}>
-            <input name="tema" className="input-main" placeholder="Tema (Ex: Anatomia)" required style={{ marginBottom: "10px", width: "95%" }} />
-            <input name="pergunta" className="input-main" placeholder="Pergunta" required style={{ marginBottom: "10px", width: "95%" }} />
-            <input name="resposta" className="input-main" placeholder="Resposta" required style={{ marginBottom: "10px", width: "95%" }} />
-            <button className="btn-save" style={{ width: "100%", background: "#22c55e", color: "white", fontWeight: "bold" }} type="submit">Adicionar Flashcard</button>
+            <input name="tema" className="input-main" placeholder="Tema da Pasta" required style={{ marginBottom: "10px", width: "100%" }} />
+            <input name="pergunta" className="input-main" placeholder="Pergunta" required style={{ marginBottom: "10px", width: "100%" }} />
+            <input name="resposta" className="input-main" placeholder="Resposta" required style={{ marginBottom: "10px", width: "100%" }} />
+            <button className="btn-save" style={{ width: "100%", background: "#22c55e" }} type="submit">Adicionar Flashcard</button>
           </form>
+
           <div className="input-group" style={{ marginTop: "20px" }}>
-            <input className="input-main" placeholder="Filtrar por tema ou pergunta..." value={buscaFlash} onChange={(e) => setBuscaFlash(e.target.value)} />
+            <input className="input-main" placeholder="🔎 Busque para filtrar ou excluir cards..." value={buscaFlash} onChange={(e) => setBuscaFlash(e.target.value)} />
           </div>
+
           <div style={{ marginTop: "20px" }}>
             {Object.keys(flashcards.reduce((acc, card) => {
               const t = card.tema || "Sem Tema";
               if (!acc[t]) acc[t] = [];
               acc[t].push(card);
               return acc;
-            }, {})).map(tema => (
-              <details key={tema} className="materia-card" style={{ marginBottom: "15px" }} open={buscaFlash !== ""}>
-                <summary style={{ cursor: "pointer", fontWeight: "bold", padding: "15px" }}>📂 {tema}</summary>
-                <div style={{ padding: "10px" }}>
-                  {flashcards.filter(f => f.tema === tema && (f.pergunta.toLowerCase().includes(buscaFlash.toLowerCase()))).map((f) => (
-                    <div key={f.id} className="tema-item" style={{position: 'relative'}}>
-                      <button onClick={() => deletarFlashcard(f.id)} className="btn-delete-icon" style={{position: 'absolute', right: '15px', top: '15px', background: 'none', border: 'none', cursor: 'pointer'}}>🗑️</button>
-                      <p><strong>Q:</strong> {f.pergunta}</p>
-                      <details><summary style={{ cursor: "pointer", color: "#3b82f6" }}>Ver Resposta</summary><p className="resposta-box">{f.resposta}</p></details>
+            }, {})).map(tema => {
+              const cardsDoTema = flashcards.filter(f => f.tema === tema);
+              const hoje = new Date().toISOString().split('T')[0];
+              const temPendencia = cardsDoTema.some(f => (f.proxima_revisao || hoje) <= hoje);
+              const corBorda = temPendencia ? "#ef4444" : "#22c55e";
+
+              return (
+                <details key={tema} className="materia-card" style={{ marginBottom: "15px" }} open={buscaFlash !== ""}>
+                  <summary style={{ cursor: "pointer", fontWeight: "bold", padding: "15px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: `6px solid ${corBorda}`, borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span>📂 {tema}</span>
+                      <span style={{opacity: 0.5, fontSize: '10px'}}>{cardsDoTema.length} cards</span>
                     </div>
-                  ))}
-                </div>
-              </details>
-            ))}
+                    <button onClick={(e) => { e.preventDefault(); deletarPastaFlashcard(tema); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '5px' }}>🗑️</button>
+                  </summary>
+                  <div style={{ padding: "10px" }}>
+                    {flashcards
+                      .filter(f => {
+                         if (f.tema !== tema) return false;
+                         const termo = buscaFlash.toLowerCase();
+                         if (buscaFlash !== "") return f.pergunta.toLowerCase().includes(termo) || f.tema.toLowerCase().includes(termo);
+                         return (f.proxima_revisao || hoje) <= hoje;
+                      })
+                      .map((f) => (
+                      <div key={f.id} className="tema-item" style={{position: 'relative', borderLeft: '3px solid #3b82f6', marginBottom: '10px'}}>
+                        <button onClick={() => deletarFlashcard(f.id)} style={{position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', cursor: 'pointer'}}>🗑️</button>
+                        <p style={{marginRight: '30px'}}><strong>Q:</strong> {f.pergunta}</p>
+                        <details>
+                          <summary style={{ cursor: "pointer", color: "#3b82f6", fontSize: '12px' }}>Ver Resposta</summary>
+                          <div style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '5px', marginTop: '5px'}}>
+                            <p>{f.resposta}</p>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                              <button onClick={() => revisarFlashcard(f.id, 'facil')} className="btn-revisao" style={{background: '#22c55e', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Fácil (4d)</button>
+                              <button onClick={() => revisarFlashcard(f.id, 'medio')} className="btn-revisao" style={{background: '#eab308', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Médio (2d)</button>
+                              <button onClick={() => revisarFlashcard(f.id, 'dificil')} className="btn-revisao" style={{background: '#ef4444', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Difícil (0d)</button>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
           </div>
         </div>
       )}
@@ -318,31 +400,11 @@ export default function App() {
       {aba === "Relatório" && (
         <div className="section">
           <div className="materia-card" style={{padding: '20px'}}>
-            <h2 style={{marginTop: 0, color: "white"}}>Resumo de Estudos</h2>
-            <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap", background: "rgba(255,255,255,0.05)", padding: "15px", borderRadius: "8px" }}>
-              <div style={{ flex: 1, minWidth: "120px" }}>
-                <label style={{ display: "block", fontSize: "12px", marginBottom: "5px", color: "#aaa" }}>Início:</label>
-                <input type="date" style={{ width: "100%", padding: "8px", borderRadius: "5px", border: "1px solid #444", background: "#1a1a1a", color: "white" }} value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
-              </div>
-              <div style={{ flex: 1, minWidth: "120px" }}>
-                <label style={{ display: "block", fontSize: "12px", marginBottom: "5px", color: "#aaa" }}>Fim:</label>
-                <input type="date" style={{ width: "100%", padding: "8px", borderRadius: "5px", border: "1px solid #444", background: "#1a1a1a", color: "white" }} value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-              </div>
-              <button onClick={() => {setDataInicio(""); setDataFim("");}} style={{ alignSelf: "flex-end", padding: "10px", borderRadius: "5px", border: "none", background: "#444", cursor: "pointer" }}>🧹</button>
+            <h2 style={{color: 'white', marginTop: 0}}>Relatório</h2>
+            <div style={{textAlign: 'center', padding: '20px', border: '2px solid var(--green)', borderRadius: '10px'}}>
+              <div style={{fontSize: '2rem', fontWeight: 'bold'}}>{formatar(sessoes.reduce((a, b) => a + (b.segundos_totais || 0), 0))}</div>
+              <div style={{fontSize: '12px', color: 'var(--green)'}}>TOTAL ESTUDADO</div>
             </div>
-            <div style={{ textAlign: "center", marginBottom: "25px", background: "rgba(34, 197, 94, 0.15)", border: "2px solid #22c55e", padding: "20px", borderRadius: "12px" }}>
-              <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: "bold", letterSpacing: "1px" }}>TOTAL NO PERÍODO</span>
-              <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginTop: "5px" }}>{formatar(totalSegundosFiltrados)}</div>
-            </div>
-            <div className="sessao-lista">
-              {sessoesFiltradas.map((s) => (
-                <div key={s.id} className="sessao-item" style={{ display: "flex", justifyContent: "space-between", padding: "10px", borderBottom: "1px solid #333" }}>
-                  <span>📅 {s.data_estudo ? new Date(s.data_estudo).toLocaleDateString("pt-BR") : "Sem data"}</span>
-                  <span style={{ fontWeight: "bold", color: "#22c55e" }}>⏱️ {formatar(s.segundos_totais || 0)}</span>
-                </div>
-              ))}
-            </div>
-            {sessoes.length > 0 && <button onClick={zerarHistorico} style={{ marginTop: "30px", width: "100%", padding: "10px", background: "rgba(239, 68, 68, 0.1)", border: "1px dashed #ef4444", color: "#ef4444", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>⚠️ Limpar Histórico de Sessões</button>}
           </div>
         </div>
       )}
