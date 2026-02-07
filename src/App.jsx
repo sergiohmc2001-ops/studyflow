@@ -177,7 +177,6 @@ export default function App() {
     }
   }
 
-  // FUNÇÃO DE EXCLUIR ANEXO SEM MEXER NO SCHEMA
   async function deletarAnexo(e, anexoId) {
     e.preventDefault();
     if (!confirm("Excluir este anexo?")) return;
@@ -185,19 +184,19 @@ export default function App() {
     carregarTudo();
   }
 
-  if (carregando) return <div className="container" style={{color: 'white', textAlign: 'center', marginTop: '50px'}}>Carregando StudyFlow...</div>;
+  if (carregando) return <div className="container" style={{color: '#00f2ff', textAlign: 'center', marginTop: '50px', letterSpacing: '2px'}}>INICIALIZANDO SISTEMA...</div>;
 
   if (!usuario) {
     return (
       <div className="container">
         <h1 className="title">STUDYFLOW</h1>
-        <div className="materia-card" style={{padding: '30px', maxWidth: '400px', margin: '40px auto'}}>
-          <h2 style={{color: 'white', marginTop: 0, textAlign: 'center'}}>Acesso</h2>
-          <input className="input-main" style={{width: '90%', marginBottom: '10px'}} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input className="input-main" style={{width: '90%', marginBottom: '20px'}} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} />
-          <div style={{display: 'flex', gap: '10px'}}>
-            <button className="btn-save" style={{flex: 1}} onClick={() => lidarAuth('login')}>Entrar</button>
-            <button className="btn-create" style={{flex: 1, background: '#444'}} onClick={() => lidarAuth('cadastro')}>Cadastrar</button>
+        <div className="materia-card" style={{padding: '40px', maxWidth: '400px', margin: '40px auto', textAlign: 'center'}}>
+          <h2 style={{color: '#fff', marginBottom: '30px', letterSpacing: '2px'}}>LOGIN DO PILOTO</h2>
+          <input className="input-main" style={{width: '100%', marginBottom: '15px', boxSizing: 'border-box'}} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input className="input-main" style={{width: '100%', marginBottom: '25px', boxSizing: 'border-box'}} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} />
+          <div style={{display: 'flex', gap: '15px'}}>
+            <button className="btn-save" style={{flex: 1, padding: '15px'}} onClick={() => lidarAuth('login')}>ENTRAR</button>
+            <button className="btn-create" style={{flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)'}} onClick={() => lidarAuth('cadastro')}>CADASTRO</button>
           </div>
         </div>
       </div>
@@ -206,9 +205,9 @@ export default function App() {
 
   return (
     <div className="container">
-      <header style={{ textAlign: 'center', marginBottom: '30px', position: 'relative' }}>
+      <header style={{ textAlign: 'center', marginBottom: '50px', position: 'relative' }}>
         <h1 className="title">STUDYFLOW</h1>
-        <button onClick={() => supabase.auth.signOut()} className="btn-delete-small" style={{position: 'absolute', right: 0, top: '10px'}}>Sair</button>
+        <button onClick={() => supabase.auth.signOut()} className="btn-delete-small" style={{position: 'absolute', right: 0, top: '20px'}}>LOGOUT</button>
       </header>
       
       <div className="tabs">
@@ -217,23 +216,22 @@ export default function App() {
         ))}
       </div>
 
-      <div className={`timer-widget ${rodando ? "timer-rodando" : ""}`}>
+      <div className="timer-widget">
         <div className="timer-info">
-          <span className="timer-label">{rodando ? "ESTUDANDO" : "PAUSADO"}</span>
+          <span style={{fontSize: '10px', color: rodando ? 'var(--accent-cyan)' : '#64748b', fontWeight: 'bold'}}>{rodando ? "SISTEMA ATIVO" : "SISTEMA EM ESPERA"}</span>
           <div className="timer-clock">{formatar(tempo)}</div>
         </div>
-        <div className="timer-btns">
-          <button onClick={() => setRodando(!rodando)} className="btn-icon">{rodando ? "⏸️" : "▶️"}</button>
-          <button onClick={salvarSessao} title="Salvar" className="btn-icon">💾</button>
-          <button onClick={() => {setRodando(false); setTempo(0)}} title="Zerar" className="btn-icon">🔄</button>
+        <div className="timer-btns" style={{display: 'flex', gap: '10px'}}>
+          <button onClick={() => setRodando(!rodando)} className="btn-icon" style={{background: 'none', border: '1px solid #333', borderRadius: '50%', color: '#fff'}}>{rodando ? "⏸" : "▶"}</button>
+          <button onClick={salvarSessao} title="Salvar" style={{background: 'none', border: '1px solid #333', borderRadius: '50%'}}>💾</button>
         </div>
       </div>
 
       {aba === "Matérias" && (
         <div className="section">
           <div className="input-group">
-            <input className="input-main" placeholder="Nova matéria..." value={novaMat} onChange={(e) => setNovaMat(e.target.value)} />
-            <button className="btn-create" onClick={criarMateria}>Criar</button>
+            <input className="input-main" placeholder="Identificar nova matéria..." value={novaMat} onChange={(e) => setNovaMat(e.target.value)} />
+            <button className="btn-pill-cyan" onClick={criarMateria}>ADICIONAR</button>
           </div>
           {materias.map((m) => {
             const totalTemas = m.temas?.length || 0;
@@ -242,80 +240,63 @@ export default function App() {
                 if (t.status === 'leitura') return acc + 2;   
                 return acc + 1; 
             }, 0) || 0;
-
             const progresso = totalTemas > 0 ? Math.round((pontos / (totalTemas * 3)) * 100) : 0;
             const corBarra = progresso > 70 ? 'var(--green)' : progresso > 35 ? '#eab308' : 'var(--red)';
 
             return (
               <div key={m.id} className="materia-card">
-                <div onClick={() => setExpandidas(p => ({...p, [m.id]: !p[m.id]}))} className="materia-header" style={{ padding: "15px", cursor: "pointer" }}>
+                <div onClick={() => setExpandidas(p => ({...p, [m.id]: !p[m.id]}))} className="materia-header" style={{ padding: "20px", cursor: "pointer" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ margin: 0 }}>{expandidas[m.id] ? "▼" : "▶"} 📁 {m.nome}</h3>
-                    <button onClick={(e) => deletarMateria(e, m.id)} className="btn-delete-small">Excluir</button>
+                    <h3 style={{ margin: 0, letterSpacing: '1px', color: '#fff' }}>{expandidas[m.id] ? "▼" : "▶"} {m.nome}</h3>
+                    <button onClick={(e) => deletarMateria(e, m.id)} className="btn-delete-small">Deletar</button>
                   </div>
-                  <div style={{ marginTop: '10px', background: '#334155', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ 
-                        width: `${progresso}%`, 
-                        background: corBarra, 
-                        height: '100%', 
-                        transition: '0.6s ease-in-out',
-                        boxShadow: `0 0 10px ${corBarra}55`
-                    }}></div>
+                  <div style={{ marginTop: '15px', background: 'rgba(0,0,0,0.3)', height: '4px', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ width: `${progresso}%`, background: corBarra, height: '100%', boxShadow: `0 0 10px ${corBarra}` }}></div>
                   </div>
                 </div>
                 {expandidas[m.id] && (
-                  <div className="materia-content" style={{ padding: "15px", borderTop: "1px solid #334155" }}>
+                  <div className="materia-content" style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                     <div className="input-group">
-                      <input className="input-main" id={`input-tema-${m.id}`} placeholder="Novo tema..." />
-                      <button className="btn-create" style={{ background: "#22c55e" }} onClick={() => criarTema(m.id)}>+</button>
+                      <input className="input-main" id={`input-tema-${m.id}`} placeholder="Novo objetivo..." />
+                      <button className="btn-pill-cyan" onClick={() => criarTema(m.id)}>+</button>
                     </div>
                     {m.temas?.map((t) => (
-                      <div key={t.id} className="tema-item" style={{marginBottom: '10px'}}>
+                      <div key={t.id} className="tema-item">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <div onClick={() => alternarStatus(t.id, t.status)} style={{ width: '12px', height: '12px', borderRadius: '50%', cursor: 'pointer', background: t.status === 'revisado' ? 'var(--green)' : t.status === 'leitura' ? '#eab308' : 'var(--red)', boxShadow: '0 0 5px currentColor' }} />
-                            <h4 style={{ margin: 0 }}>{t.nome}</h4>
+                          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                            <div onClick={() => alternarStatus(t.id, t.status)} style={{ width: '10px', height: '10px', borderRadius: '50%', cursor: 'pointer', background: t.status === 'revisado' ? 'var(--green)' : t.status === 'leitura' ? '#eab308' : 'var(--red)', boxShadow: `0 0 10px currentColor` }} />
+                            <h4 style={{ margin: 0, fontWeight: '500' }}>{t.nome}</h4>
                           </div>
-                          <div style={{ display: "flex", gap: "5px" }}>
-                            <button onClick={() => setNotasAbertas(p => ({...p, [t.id]: !p[t.id]}))} className="btn-anexo" style={{color: '#3b82f6', borderColor: '#3b82f6', background: 'transparent', cursor: 'pointer'}}>📝</button>
-                            <label className="btn-anexo" style={{cursor: 'pointer'}}>📎<input type="file" hidden onChange={(e) => anexarArquivo(t.id, e.target.files[0])} /></label>
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <button onClick={() => setNotasAbertas(p => ({...p, [t.id]: !p[t.id]}))} className="btn-anexo" style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px'}}>📝</button>
+                            <label style={{cursor: 'pointer', fontSize: '18px'}}>📎<input type="file" hidden onChange={(e) => anexarArquivo(t.id, e.target.files[0])} /></label>
                           </div>
                         </div>
 
-                        {/* LISTA DE ANEXOS COM (X) PARA EXCLUIR */}
                         {t.anexos && t.anexos.length > 0 && (
-                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '5px', paddingLeft: '22px' }}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingLeft: '25px' }}>
                             {t.anexos.map(anexo => (
-                              <div key={anexo.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(59,130,246,0.1)', borderRadius: '4px', border: '1px solid #3b82f6', overflow: 'hidden' }}>
-                                <a href={anexo.url} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: '#3b82f6', textDecoration: 'none', padding: '2px 6px' }}>
-                                  📄 {anexo.nome_arquivo}
-                                </a>
-                                <button onClick={(e) => deletarAnexo(e, anexo.id)} style={{ background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', padding: '2px 5px', fontSize: '10px' }}>✕</button>
+                              <div key={anexo.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,242,255,0.05)', borderRadius: '6px', border: '1px solid rgba(0,242,255,0.2)' }}>
+                                <a href={anexo.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--accent-cyan)', textDecoration: 'none', padding: '5px 10px' }}>{anexo.nome_arquivo}</a>
+                                <button onClick={(e) => deletarAnexo(e, anexo.id)} style={{ background: 'rgba(0,242,255,0.2)', color: 'white', border: 'none', padding: '5px 8px', cursor: 'pointer' }}>✕</button>
                               </div>
                             ))}
                           </div>
                         )}
 
                         {notasAbertas[t.id] && (
-                          <div style={{marginTop: '10px', background: '#0f172a', padding: '10px', borderRadius: '5px'}}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
-                              <span style={{fontSize: '10px', color: '#64748b'}}>ANOTAÇÕES</span>
-                              {editandoNota === t.id ? (
-                                <button onClick={() => salvarNota(t.id)} className="btn-save" style={{padding: '2px 10px', fontSize: '10px', background: '#22c55e'}}>Salvar</button>
-                              ) : (
-                                <button onClick={() => { setEditandoNota(t.id); setTextoNota(t.notas || ""); }} className="btn-save" style={{padding: '2px 10px', fontSize: '10px', background: '#3b82f6'}}>Editar</button>
-                              )}
+                          <div style={{marginTop: '15px'}}>
+                             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px'}}>
+                              <span style={{fontSize: '10px', color: 'var(--accent-cyan)', letterSpacing: '1px'}}>DATA_LOG</span>
+                              <button onClick={() => editandoNota === t.id ? salvarNota(t.id) : (setEditandoNota(t.id), setTextoNota(t.notas || ""))} className="btn-save" style={{padding: '5px 15px', fontSize: '10px'}}>
+                                {editandoNota === t.id ? "CONFIRMAR" : "EDITAR"}
+                              </button>
                             </div>
                             {editandoNota === t.id ? (
-                              <textarea 
-                                className="textarea-notas" 
-                                value={textoNota} 
-                                onChange={(e) => setTextoNota(e.target.value)}
-                                autoFocus
-                              />
+                              <textarea className="textarea-notas" value={textoNota} onChange={(e) => setTextoNota(e.target.value)} autoFocus />
                             ) : (
-                              <div style={{fontSize: '14px', whiteSpace: 'pre-wrap', color: t.notas ? '#e2e8f0' : '#475569', minHeight: '30px', padding: '10px'}}>
-                                {t.notas || "Nenhuma anotação ainda..."}
+                              <div style={{fontSize: '14px', whiteSpace: 'pre-wrap', color: '#94a3b8', background: '#000', padding: '15px', borderRadius: '10px', border: '1px solid #111'}}>
+                                {t.notas || "// Nenhuma informação registrada no banco."}
                               </div>
                             )}
                           </div>
@@ -332,19 +313,17 @@ export default function App() {
 
       {aba === "Flashcards" && (
         <div className="section">
-          <form className="materia-card" style={{padding: '20px'}} onSubmit={criarFlashcard}>
-            <input name="tema" className="input-main" placeholder="Tema da Pasta" required style={{ marginBottom: "10px", width: "100%" }} />
-            <input name="pergunta" className="input-main" placeholder="Pergunta" required style={{ marginBottom: "10px", width: "100%" }} />
-            <input name="resposta" className="input-main" placeholder="Resposta" required style={{ marginBottom: "10px", width: "100%" }} />
-            <button className="btn-save" style={{ width: "100%", background: "#22c55e" }} type="submit">Adicionar Flashcard</button>
+          <form className="materia-card" style={{padding: '30px'}} onSubmit={criarFlashcard}>
+            <h3 style={{marginTop: 0, color: 'var(--accent-cyan)', letterSpacing: '2px'}}>NOVA UNIDADE DE DADOS</h3>
+            <input name="tema" className="input-main" placeholder="Tema" required style={{ marginBottom: "15px", width: "100%", boxSizing: 'border-box' }} />
+            <input name="pergunta" className="input-main" placeholder="Pergunta" required style={{ marginBottom: "15px", width: "100%", boxSizing: 'border-box' }} />
+            <input name="resposta" className="input-main" placeholder="Resposta" required style={{ marginBottom: "25px", width: "100%", boxSizing: 'border-box' }} />
+            <button className="btn-pill-cyan" style={{ width: "100%", padding: '15px' }} type="submit">SINCRONIZAR FLASHCARD</button>
           </form>
 
-          <div className="input-group" style={{ marginTop: "20px" }}>
-            <input className="input-main" placeholder="🔎 Busque para filtrar ou excluir cards..." value={buscaFlash} onChange={(e) => setBuscaFlash(e.target.value)} />
-          </div>
+          <input className="input-main" style={{width: '100%', boxSizing: 'border-box', marginBottom: '20px'}} placeholder="🔎 Filtrar base de dados..." value={buscaFlash} onChange={(e) => setBuscaFlash(e.target.value)} />
 
-          <div style={{ marginTop: "20px" }}>
-            {Object.keys(flashcards.reduce((acc, card) => {
+          {Object.keys(flashcards.reduce((acc, card) => {
               const t = card.tema || "Sem Tema";
               if (!acc[t]) acc[t] = [];
               acc[t].push(card);
@@ -353,38 +332,27 @@ export default function App() {
               const cardsDoTema = flashcards.filter(f => f.tema === tema);
               const hoje = new Date().toISOString().split('T')[0];
               const temPendencia = cardsDoTema.some(f => (f.proxima_revisao || hoje) <= hoje);
-              const corBorda = temPendencia ? "#ef4444" : "#22c55e";
 
               return (
-                <details key={tema} className="materia-card" style={{ marginBottom: "15px" }} open={buscaFlash !== ""}>
-                  <summary style={{ cursor: "pointer", fontWeight: "bold", padding: "15px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: `6px solid ${corBorda}`, borderRadius: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span>📂 {tema}</span>
-                      <span style={{opacity: 0.5, fontSize: '10px'}}>{cardsDoTema.length} cards</span>
+                <details key={tema} className="materia-card" open={buscaFlash !== ""}>
+                  <summary style={{ cursor: "pointer", padding: "20px", display: 'flex', justifyContent: 'space-between', borderLeft: `4px solid ${temPendencia ? 'var(--red)' : 'var(--green)'}` }}>
+                    <div style={{display: 'flex', gap: '15px', alignItems: 'center'}}>
+                      <span style={{fontWeight: 'bold', letterSpacing: '1px'}}>PASTA: {tema}</span>
+                      <span style={{fontSize: '10px', color: '#444'}}>[{cardsDoTema.length} UNIDADES]</span>
                     </div>
-                    <button onClick={(e) => { e.preventDefault(); deletarPastaFlashcard(tema); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '5px' }}>🗑️</button>
+                    <button onClick={(e) => { e.preventDefault(); deletarPastaFlashcard(tema); }} style={{background: 'none', border: 'none', cursor: 'pointer'}}>🗑️</button>
                   </summary>
-                  <div style={{ padding: "10px" }}>
-                    {flashcards
-                      .filter(f => {
-                         if (f.tema !== tema) return false;
-                         const termo = buscaFlash.toLowerCase();
-                         if (buscaFlash !== "") return f.pergunta.toLowerCase().includes(termo) || f.tema.toLowerCase().includes(termo);
-                         return (f.proxima_revisao || hoje) <= hoje;
-                      })
-                      .map((f) => (
-                      <div key={f.id} className="tema-item" style={{position: 'relative', borderLeft: '3px solid #3b82f6', marginBottom: '10px'}}>
-                        <button onClick={() => deletarFlashcard(f.id)} style={{position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', cursor: 'pointer'}}>🗑️</button>
-                        <p style={{marginRight: '30px'}}><strong>Q:</strong> {f.pergunta}</p>
+                  <div style={{ padding: "20px" }}>
+                    {flashcards.filter(f => f.tema === tema).map((f) => (
+                      <div key={f.id} className="tema-item" style={{borderLeft: '2px solid var(--accent-cyan)'}}>
+                        <p style={{marginTop: 0}}><strong>PROMPT:</strong> {f.pergunta}</p>
                         <details>
-                          <summary style={{ cursor: "pointer", color: "#3b82f6", fontSize: '12px' }}>Ver Resposta</summary>
-                          <div style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '5px', marginTop: '5px'}}>
-                            <p>{f.resposta}</p>
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                              <button onClick={() => revisarFlashcard(f.id, 'facil')} className="btn-revisao" style={{background: '#22c55e', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Fácil (4d)</button>
-                              <button onClick={() => revisarFlashcard(f.id, 'medio')} className="btn-revisao" style={{background: '#eab308', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Médio (2d)</button>
-                              <button onClick={() => revisarFlashcard(f.id, 'dificil')} className="btn-revisao" style={{background: '#ef4444', flex: 1, padding: '5px', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '10px'}}>Difícil (0d)</button>
-                            </div>
+                          <summary style={{ cursor: "pointer", color: "var(--accent-cyan)", fontSize: '11px', letterSpacing: '1px' }}>REVELAR RESPOSTA</summary>
+                          <p style={{background: '#000', padding: '15px', borderRadius: '8px', border: '1px solid #111', marginTop: '10px'}}>{f.resposta}</p>
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            <button onClick={() => revisarFlashcard(f.id, 'facil')} className="btn-revisao" style={{background: 'var(--green)', flex: 1}}>FÁCIL</button>
+                            <button onClick={() => revisarFlashcard(f.id, 'medio')} className="btn-revisao" style={{background: '#eab308', flex: 1}}>MÉDIO</button>
+                            <button onClick={() => revisarFlashcard(f.id, 'dificil')} className="btn-revisao" style={{background: 'var(--red)', flex: 1}}>DIFÍCIL</button>
                           </div>
                         </details>
                       </div>
@@ -393,17 +361,16 @@ export default function App() {
                 </details>
               );
             })}
-          </div>
         </div>
       )}
 
       {aba === "Relatório" && (
         <div className="section">
-          <div className="materia-card" style={{padding: '20px'}}>
-            <h2 style={{color: 'white', marginTop: 0}}>Relatório</h2>
-            <div style={{textAlign: 'center', padding: '20px', border: '2px solid var(--green)', borderRadius: '10px'}}>
-              <div style={{fontSize: '2rem', fontWeight: 'bold'}}>{formatar(sessoes.reduce((a, b) => a + (b.segundos_totais || 0), 0))}</div>
-              <div style={{fontSize: '12px', color: 'var(--green)'}}>TOTAL ESTUDADO</div>
+          <div className="materia-card" style={{padding: '40px', textAlign: 'center'}}>
+            <h2 style={{color: 'var(--accent-cyan)', letterSpacing: '4px', marginBottom: '40px'}}>ESTATÍSTICAS DE OPERAÇÃO</h2>
+            <div style={{padding: '40px', border: '1px solid var(--accent-cyan)', borderRadius: '100%', width: '200px', height: '200px', margin: '0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 0 30px rgba(0,242,255,0.1)'}}>
+              <div style={{fontSize: '2.5rem', fontWeight: '800', color: '#fff'}}>{formatar(sessoes.reduce((a, b) => a + (b.segundos_totais || 0), 0))}</div>
+              <div style={{fontSize: '10px', color: 'var(--accent-cyan)', marginTop: '10px'}}>TEMPO TOTAL</div>
             </div>
           </div>
         </div>
