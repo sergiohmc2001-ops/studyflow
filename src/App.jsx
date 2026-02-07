@@ -205,9 +205,9 @@ export default function App() {
 
   return (
     <div className="container">
-      <header style={{ textAlign: 'center', marginBottom: '50px', position: 'relative' }}>
+      <header className="main-header" style={{ textAlign: 'center', marginBottom: '50px', position: 'relative' }}>
         <h1 className="title">STUDYFLOW</h1>
-        <button onClick={() => supabase.auth.signOut()} className="btn-delete-small" style={{position: 'absolute', right: 0, top: '20px'}}>LOGOUT</button>
+        <button onClick={() => supabase.auth.signOut()} className="btn-logout-header">LOGOUT</button>
       </header>
       
       <div className="tabs">
